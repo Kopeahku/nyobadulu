@@ -7,12 +7,14 @@
     
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script> 
     
     <script>
+        // GANTI DENGAN KONFIGURASI PROYEK ANDA
         const firebaseConfig = {
-          apiKey: "AIzaSyBg7BB8LG9Nk2yva4BEtqXggIPB8-o4yZg", // GANTI dengan API KEY ANDA
+          apiKey: "AIzaSyBg7BB8LG9Nk2yva4BEtqXggIPB8-o4yZg", 
           authDomain: "user-b44ff.firebaseapp.com",
-          projectId: "user-b44ff", // GANTI dengan PROJECT ID ANDA
+          projectId: "user-b44ff", 
           storageBucket: "user-b44ff.firebasestorage.app",
           messagingSenderId: "267328832825",
           appId: "1:267328832825:web:2212487f6b2106275cd4e8", 
@@ -21,6 +23,8 @@
         
         const app = firebase.initializeApp(firebaseConfig);
         const db = app.firestore();
+        const auth = app.auth();
+        
         const WARGA_COLLECTION = db.collection('warga');
     </script>
     
@@ -39,6 +43,7 @@
         }
         .dark body { background-color: #111827; }
         .dark .auth-container { background-color: #1f2937; }
+        .modal { transition: opacity 0.3s, transform 0.3s; }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
@@ -61,10 +66,13 @@
                 </div>
                 <div class="mb-6">
                     <label for="login-password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
-                    <input type="password" id="login-password" placeholder="contoh: 123456" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100" required>
+                    <input type="password" id="login-password" placeholder="contoh: minimal 6 karakter" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100" required>
                 </div>
                 <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition duration-150 shadow-lg shadow-blue-500/50">MASUK</button>
             </form>
+            
+            <button id="forgot-password-btn" class="w-full text-sm text-blue-500 mt-2 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors duration-150">Lupa Sandi?</button>
+            
             <p class="text-sm text-center mt-4 text-gray-500 dark:text-gray-400">Tidak punya akun? <button class="text-blue-600 dark:text-blue-400 font-semibold" onclick="switchTab('register')">Daftar di sini.</button></p>
         </div>
 
@@ -105,14 +113,39 @@
             </div>
 
     </div>
+    
+    <div id="forgot-password-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden items-center justify-center p-4 z-50 modal opacity-0">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-full max-w-sm p-6 transform modal scale-90">
+            <h2 class="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">Reset Sandi</h2>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Masukkan Email Anda. Kami akan mengirimkan tautan reset sandi ke email tersebut.</p>
+            
+            <form id="form-forgot-password">
+                <div class="mb-4">
+                    <label for="fp-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email Terdaftar</label>
+                    <input type="email" id="fp-email" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100" required>
+                </div>
+                
+                <div class="flex justify-end space-x-3">
+                    <button type="button" id="close-fp-modal-btn" class="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 transition duration-150">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition duration-150">Kirim Tautan Reset</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 
     <script>
         const cardLogin = document.getElementById('card-login');
         const cardRegister = document.getElementById('card-register');
         const tabLogin = document.getElementById('tab-login');
         const tabRegister = document.getElementById('tab-register');
+        
+        const fpModal = document.getElementById('forgot-password-modal');
+        const forgotPasswordBtn = document.getElementById('forgot-password-btn');
+        const closeFpModalBtn = document.getElementById('close-fp-modal-btn');
+        const formForgotPassword = document.getElementById('form-forgot-password');
 
-        // Fungsi untuk menampilkan notifikasi (sama seperti di app.js)
+
         function showNotification(message, type = 'info') {
             const container = document.getElementById('notification-container');
             const notification = document.createElement('div');
@@ -147,9 +180,8 @@
             }, 4000);
         }
 
-        // Fungsi untuk berpindah antara tab Login dan Daftar
         function switchTab(tab) {
-            if (tab === 'login') {
+             if (tab === 'login') {
                 cardLogin.classList.remove('hidden', 'translate-y-full');
                 cardRegister.classList.add('hidden', 'translate-y-full');
                 tabLogin.classList.add('bg-white', 'text-blue-600', 'shadow-md', 'dark:bg-gray-800', 'dark:text-blue-400');
@@ -166,20 +198,17 @@
             }
         }
 
-        // Listener untuk tab switcher
         tabLogin.addEventListener('click', () => switchTab('login'));
         tabRegister.addEventListener('click', () => switchTab('register'));
 
 
-        // =======================================================
-        // HANDLE PENDAFTARAN (REGISTER)
-        // =======================================================
+        // HANDLE PENDAFTARAN (REGISTER) - Menggunakan Firebase Auth
         document.getElementById('form-register').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const nama = document.getElementById('reg-nama').value.trim();
             const alamat = document.getElementById('reg-alamat').value.trim();
-            const role = document.getElementById('reg-role').value; // ⬅️ NEW: Ambil role
+            const role = document.getElementById('reg-role').value;
             const email = document.getElementById('reg-email').value.trim();
             const password = document.getElementById('reg-password').value.trim();
 
@@ -187,43 +216,46 @@
                 showNotification('Harap lengkapi semua data wajib!', 'error');
                 return;
             }
+            if (password.length < 6) {
+                 showNotification('Password minimal 6 karakter.', 'error');
+                return;
+            }
 
             try {
-                // 1. Cek apakah email sudah terdaftar
-                const existingWarga = await WARGA_COLLECTION.where('email', '==', email).get();
-                if (!existingWarga.empty) {
-                    showNotification('Email ini sudah terdaftar sebagai warga.', 'error');
-                    return;
-                }
-
-                // 2. Simpan warga baru ke Firestore
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                const userAuth = userCredential.user;
+                
                 const newWargaData = {
                     nama: nama,
                     alamat: alamat,
-                    role: role, // ⬅️ NEW: Simpan role di Firestore
+                    role: role, 
                     email: email,
-                    password: password, 
                     pekerjaan: 'Belum Diisi',
                     status: 'Aktif',
                     whatsapp: '',
                     referral: '',
                 };
 
-                await WARGA_COLLECTION.add(newWargaData);
+                await WARGA_COLLECTION.doc(userAuth.uid).set(newWargaData);
                 
-                showNotification(`Pendaftaran ${nama} (${role.toUpperCase()}) berhasil!`, 'success');
+                showNotification(`Akun ${nama} (${role.toUpperCase()}) berhasil dibuat! Silakan masuk.`, 'success');
                 document.getElementById('form-register').reset();
-                switchTab('login'); // Arahkan kembali ke login setelah sukses
+                switchTab('login'); 
                 
             } catch (error) {
                 console.error("Gagal mendaftar warga:", error);
-                showNotification('Gagal mendaftar. Cek koneksi atau konsol.', 'error');
+                
+                let errorMessage = 'Gagal mendaftar. Cek koneksi.';
+                if (error.code === 'auth/email-already-in-use') {
+                    errorMessage = 'Email ini sudah terdaftar.';
+                } else if (error.code === 'auth/weak-password') {
+                    errorMessage = 'Password terlalu lemah (minimal 6 karakter).';
+                }
+                showNotification(errorMessage, 'error');
             }
         });
         
-        // =======================================================
-        // HANDLE LOGIN 
-        // =======================================================
+        // HANDLE LOGIN - Menggunakan Firebase Auth
         document.getElementById('form-login').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -236,34 +268,72 @@
             }
 
             try {
-                // 1. Cari warga di Firestore
-                const querySnapshot = await WARGA_COLLECTION
-                    .where('email', '==', email)
-                    .where('password', '==', password)
-                    .limit(1)
-                    .get();
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                const userAuth = userCredential.user;
 
-                if (!querySnapshot.empty) {
-                    // Jika login sukses
-                    const user = { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() };
-                    
-                    // Simpan status login ke Session Storage
-                    sessionStorage.setItem('loggedInUser', JSON.stringify(user));
-                    
-                    showNotification(`Selamat datang, ${user.nama}! (Role: ${user.role.toUpperCase()})`, 'success');
-                    
-                    // Redirect ke halaman utama aplikasi
-                    setTimeout(() => {
-                        window.location.href = 'index.html'; 
-                    }, 500);
+                const doc = await WARGA_COLLECTION.doc(userAuth.uid).get();
 
-                } else {
-                    showNotification('Email atau Password salah. Coba lagi.', 'error');
+                if (!doc.exists) {
+                    showNotification('Profil tidak ditemukan. Hubungi Admin.', 'error');
+                    auth.signOut();
+                    return;
                 }
+
+                const userData = { id: userAuth.uid, ...doc.data() };
+                sessionStorage.setItem('loggedInUser', JSON.stringify(userData));
+                
+                showNotification(`Selamat datang, ${userData.nama}! (Role: ${userData.role.toUpperCase()})`, 'success');
+                
+                setTimeout(() => {
+                    window.location.href = 'index.html'; 
+                }, 500);
 
             } catch (error) {
                 console.error("Error saat login:", error);
-                showNotification('Terjadi error saat mencoba login.', 'error');
+                let errorMessage = 'Login Gagal. Cek email/password.';
+                if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-email') {
+                    errorMessage = 'Email atau Password salah. Coba lagi.';
+                }
+                showNotification(errorMessage, 'error');
+            }
+        });
+
+        // HANDLE LUPA SANDI (FORGOT PASSWORD) - Menggunakan Firebase Auth
+        forgotPasswordBtn.addEventListener('click', () => {
+            fpModal.classList.remove('hidden');
+            setTimeout(() => {
+                fpModal.classList.remove('opacity-0');
+                fpModal.querySelector('div:last-child').classList.remove('scale-90');
+            }, 10);
+        });
+
+        function closeFpModal() {
+            fpModal.querySelector('div:last-child').classList.add('scale-90');
+            fpModal.classList.add('opacity-0');
+            setTimeout(() => {
+                fpModal.classList.add('hidden');
+            }, 300);
+        }
+        closeFpModalBtn.addEventListener('click', closeFpModal);
+
+        formForgotPassword.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('fp-email').value.trim();
+
+            try {
+                await auth.sendPasswordResetEmail(email);
+
+                showNotification('Tautan reset sandi telah dikirim ke email Anda!', 'success');
+                formForgotPassword.reset();
+                closeFpModal();
+
+            } catch (error) {
+                console.error("Gagal mengirim email reset:", error);
+                let errorMessage = 'Gagal mengirim. Cek email Anda atau koneksi.';
+                if (error.code === 'auth/user-not-found') {
+                    errorMessage = 'Email tidak terdaftar.';
+                }
+                showNotification(errorMessage, 'error');
             }
         });
 
