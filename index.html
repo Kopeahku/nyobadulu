@@ -10,7 +10,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script> 
     
     <script>
-        // GANTI DENGAN KONFIGURASI PROYEK ANDA
+        // 🚨 GANTI DENGAN KONFIGURASI PROYEK ANDA
         const firebaseConfig = {
           apiKey: "AIzaSyBg7BB8LG9Nk2yva4BEtqXggIPB8-o4yZg", 
           authDomain: "user-b44ff.firebaseapp.com",
@@ -35,15 +35,11 @@
     <style>
         body { background-color: #f7f9fc; }
         .auth-container { 
-            max-width: 420px; 
-            margin: 0 auto; 
-            min-height: 100vh;
-            background-color: white;
-            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            max-width: 420px; margin: 0 auto; min-height: 100vh;
+            background-color: white; box-shadow: 0 0 20px rgba(0,0,0,0.05);
         }
         .dark body { background-color: #111827; }
         .dark .auth-container { background-color: #1f2937; }
-        .modal { transition: opacity 0.3s, transform 0.3s; }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
@@ -133,47 +129,29 @@
         </div>
     </div>
 
-
     <script>
         const cardLogin = document.getElementById('card-login');
         const cardRegister = document.getElementById('card-register');
         const tabLogin = document.getElementById('tab-login');
         const tabRegister = document.getElementById('tab-register');
-        
         const fpModal = document.getElementById('forgot-password-modal');
         const forgotPasswordBtn = document.getElementById('forgot-password-btn');
         const closeFpModalBtn = document.getElementById('close-fp-modal-btn');
         const formForgotPassword = document.getElementById('form-forgot-password');
 
-
         function showNotification(message, type = 'info') {
             const container = document.getElementById('notification-container');
             const notification = document.createElement('div');
-            
-            let bgColor, textColor, icon;
-            if (type === 'success') {
-                bgColor = 'bg-green-500';
-                textColor = 'text-white';
-                icon = '✅';
-            } else if (type === 'error') {
-                bgColor = 'bg-red-500';
-                textColor = 'text-white';
-                icon = '❌';
-            } else {
-                bgColor = 'bg-blue-500';
-                textColor = 'text-white';
-                icon = 'ℹ️';
-            }
+            let bgColor, icon;
+            if (type === 'success') { bgColor = 'bg-green-500'; icon = '✅'; } 
+            else if (type === 'error') { bgColor = 'bg-red-500'; icon = '❌'; } 
+            else { bgColor = 'bg-blue-500'; icon = 'ℹ️'; }
 
-            notification.className = `p-3 mb-2 rounded-lg shadow-lg flex items-center space-x-2 ${bgColor} ${textColor} opacity-0 transform transition-all duration-300`;
+            notification.className = `p-3 mb-2 rounded-lg shadow-lg flex items-center space-x-2 text-white ${bgColor} opacity-0 transform transition-all duration-300`;
             notification.innerHTML = `<span class="font-bold">${icon}</span> <span>${message}</span>`;
             
             container.appendChild(notification);
-
-            setTimeout(() => {
-                notification.classList.remove('opacity-0');
-            }, 10);
-
+            setTimeout(() => notification.classList.remove('opacity-0'), 10);
             setTimeout(() => {
                 notification.classList.add('opacity-0');
                 setTimeout(() => notification.remove(), 500);
@@ -197,44 +175,23 @@
                 tabLogin.classList.add('text-gray-500', 'dark:text-gray-400');
             }
         }
-
         tabLogin.addEventListener('click', () => switchTab('login'));
         tabRegister.addEventListener('click', () => switchTab('register'));
 
 
-        // HANDLE PENDAFTARAN (REGISTER) - Menggunakan Firebase Auth
         document.getElementById('form-register').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
             const nama = document.getElementById('reg-nama').value.trim();
             const alamat = document.getElementById('reg-alamat').value.trim();
             const role = document.getElementById('reg-role').value;
             const email = document.getElementById('reg-email').value.trim();
             const password = document.getElementById('reg-password').value.trim();
-
-            if (!nama || !alamat || !email || !password || !role) {
-                showNotification('Harap lengkapi semua data wajib!', 'error');
-                return;
-            }
-            if (password.length < 6) {
-                 showNotification('Password minimal 6 karakter.', 'error');
-                return;
-            }
+            if (password.length < 6) { showNotification('Password minimal 6 karakter.', 'error'); return; }
 
             try {
                 const userCredential = await auth.createUserWithEmailAndPassword(email, password);
                 const userAuth = userCredential.user;
-                
-                const newWargaData = {
-                    nama: nama,
-                    alamat: alamat,
-                    role: role, 
-                    email: email,
-                    pekerjaan: 'Belum Diisi',
-                    status: 'Aktif',
-                    whatsapp: '',
-                    referral: '',
-                };
+                const newWargaData = { nama, alamat, role, email, pekerjaan: 'Belum Diisi', status: 'Aktif', whatsapp: '', referral: '' };
 
                 await WARGA_COLLECTION.doc(userAuth.uid).set(newWargaData);
                 
@@ -244,33 +201,21 @@
                 
             } catch (error) {
                 console.error("Gagal mendaftar warga:", error);
-                
                 let errorMessage = 'Gagal mendaftar. Cek koneksi.';
-                if (error.code === 'auth/email-already-in-use') {
-                    errorMessage = 'Email ini sudah terdaftar.';
-                } else if (error.code === 'auth/weak-password') {
-                    errorMessage = 'Password terlalu lemah (minimal 6 karakter).';
-                }
+                if (error.code === 'auth/email-already-in-use') { errorMessage = 'Email ini sudah terdaftar.'; } 
+                else if (error.code === 'auth/weak-password') { errorMessage = 'Password terlalu lemah (minimal 6 karakter).'; }
                 showNotification(errorMessage, 'error');
             }
         });
         
-        // HANDLE LOGIN - Menggunakan Firebase Auth
         document.getElementById('form-login').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
             const email = document.getElementById('login-email').value.trim();
             const password = document.getElementById('login-password').value.trim();
-
-            if (!email || !password) {
-                showNotification('Email dan Password wajib diisi.', 'error');
-                return;
-            }
 
             try {
                 const userCredential = await auth.signInWithEmailAndPassword(email, password);
                 const userAuth = userCredential.user;
-
                 const doc = await WARGA_COLLECTION.doc(userAuth.uid).get();
 
                 if (!doc.exists) {
@@ -284,55 +229,39 @@
                 
                 showNotification(`Selamat datang, ${userData.nama}! (Role: ${userData.role.toUpperCase()})`, 'success');
                 
-                setTimeout(() => {
-                    window.location.href = 'index.html'; 
-                }, 500);
+                setTimeout(() => { window.location.href = 'index.html'; }, 500);
 
             } catch (error) {
                 console.error("Error saat login:", error);
-                let errorMessage = 'Login Gagal. Cek email/password.';
-                if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-email') {
-                    errorMessage = 'Email atau Password salah. Coba lagi.';
-                }
+                let errorMessage = 'Email atau Password salah. Coba lagi.';
                 showNotification(errorMessage, 'error');
             }
         });
 
-        // HANDLE LUPA SANDI (FORGOT PASSWORD) - Menggunakan Firebase Auth
+        // HANDLE LUPA SANDI
         forgotPasswordBtn.addEventListener('click', () => {
             fpModal.classList.remove('hidden');
-            setTimeout(() => {
-                fpModal.classList.remove('opacity-0');
-                fpModal.querySelector('div:last-child').classList.remove('scale-90');
-            }, 10);
+            setTimeout(() => { fpModal.classList.remove('opacity-0'); fpModal.querySelector('div:last-child').classList.remove('scale-90'); }, 10);
         });
 
         function closeFpModal() {
             fpModal.querySelector('div:last-child').classList.add('scale-90');
             fpModal.classList.add('opacity-0');
-            setTimeout(() => {
-                fpModal.classList.add('hidden');
-            }, 300);
+            setTimeout(() => { fpModal.classList.add('hidden'); }, 300);
         }
         closeFpModalBtn.addEventListener('click', closeFpModal);
 
         formForgotPassword.addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('fp-email').value.trim();
-
             try {
                 await auth.sendPasswordResetEmail(email);
-
                 showNotification('Tautan reset sandi telah dikirim ke email Anda!', 'success');
                 formForgotPassword.reset();
                 closeFpModal();
-
             } catch (error) {
-                console.error("Gagal mengirim email reset:", error);
                 let errorMessage = 'Gagal mengirim. Cek email Anda atau koneksi.';
-                if (error.code === 'auth/user-not-found') {
-                    errorMessage = 'Email tidak terdaftar.';
-                }
+                if (error.code === 'auth/user-not-found') { errorMessage = 'Email tidak terdaftar.'; }
                 showNotification(errorMessage, 'error');
             }
         });
