@@ -79,6 +79,15 @@
                     <label for="reg-alamat" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Alamat / Blok Rumah</label>
                     <input type="text" id="reg-alamat" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100" required>
                 </div>
+                
+                <div class="mb-4">
+                    <label for="reg-role" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tingkat Akses (Role)</label>
+                    <select id="reg-role" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100 appearance-none" required>
+                        <option value="member">Member (Hanya lihat)</option>
+                        <option value="admin">Admin (Akses penuh)</option>
+                    </select>
+                </div>
+                
                 <div class="mb-4">
                     <label for="reg-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email (Untuk Login)</label>
                     <input type="email" id="reg-email" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100" required>
@@ -105,7 +114,6 @@
 
         // Fungsi untuk menampilkan notifikasi (sama seperti di app.js)
         function showNotification(message, type = 'info') {
-            // ... (Kode notifikasi yang sama) ...
             const container = document.getElementById('notification-container');
             const notification = document.createElement('div');
             
@@ -139,7 +147,6 @@
             }, 4000);
         }
 
-
         // Fungsi untuk berpindah antara tab Login dan Daftar
         function switchTab(tab) {
             if (tab === 'login') {
@@ -172,10 +179,11 @@
             
             const nama = document.getElementById('reg-nama').value.trim();
             const alamat = document.getElementById('reg-alamat').value.trim();
+            const role = document.getElementById('reg-role').value; // ⬅️ NEW: Ambil role
             const email = document.getElementById('reg-email').value.trim();
             const password = document.getElementById('reg-password').value.trim();
 
-            if (!nama || !alamat || !email || !password) {
+            if (!nama || !alamat || !email || !password || !role) {
                 showNotification('Harap lengkapi semua data wajib!', 'error');
                 return;
             }
@@ -192,8 +200,9 @@
                 const newWargaData = {
                     nama: nama,
                     alamat: alamat,
+                    role: role, // ⬅️ NEW: Simpan role di Firestore
                     email: email,
-                    password: password, // PENTING: Dalam aplikasi ini, password disimpan plain text.
+                    password: password, 
                     pekerjaan: 'Belum Diisi',
                     status: 'Aktif',
                     whatsapp: '',
@@ -202,7 +211,7 @@
 
                 await WARGA_COLLECTION.add(newWargaData);
                 
-                showNotification(`Pendaftaran ${nama} berhasil!`, 'success');
+                showNotification(`Pendaftaran ${nama} (${role.toUpperCase()}) berhasil!`, 'success');
                 document.getElementById('form-register').reset();
                 switchTab('login'); // Arahkan kembali ke login setelah sukses
                 
@@ -213,7 +222,7 @@
         });
         
         // =======================================================
-        // HANDLE LOGIN (Hanya Redirect ke index.html)
+        // HANDLE LOGIN 
         // =======================================================
         document.getElementById('form-login').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -238,11 +247,10 @@
                     // Jika login sukses
                     const user = { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() };
                     
-                    // Simpan status login ke Session Storage agar index.html tahu siapa yang login
-                    // PENTING: Ini BUKAN autentikasi aman, hanya simulasi
+                    // Simpan status login ke Session Storage
                     sessionStorage.setItem('loggedInUser', JSON.stringify(user));
                     
-                    showNotification(`Selamat datang, ${user.nama}!`, 'success');
+                    showNotification(`Selamat datang, ${user.nama}! (Role: ${user.role.toUpperCase()})`, 'success');
                     
                     // Redirect ke halaman utama aplikasi
                     setTimeout(() => {
