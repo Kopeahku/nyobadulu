@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="id" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kas Warga - Iuran & Tabungan</title>
+    
+    <link rel="manifest" href="manifest.json">
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    
+    <script>
+        const firebaseConfig = {
+          apiKey: "AIzaSyBg7BB8LG9Nk2yva4BEtqXggIPB8-o4yZg",
+          authDomain: "user-b44ff.firebaseapp.com",
+          projectId: "user-b44ff",
+          storageBucket: "user-b44ff.firebasestorage.app",
+          messagingSenderId: "267328832825",
+          appId: "1:267328832825:web:2212487f6b2106275cd4e8",
+          measurementId: "G-LSZLNVL3ZB"
+        };
+        
+        // Inisialisasi Firebase App
+        const app = firebase.initializeApp(firebaseConfig);
+        // Dapatkan instance Cloud Firestore
+        const db = app.firestore();
+
+        // Variabel global untuk koleksi, dapat diakses di app.js
+        const WARGA_COLLECTION = db.collection('warga');
+        const TRANSAKSI_COLLECTION = db.collection('transaksi');
+    </script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class', 
+        }
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Gaya dasar untuk simulasi aplikasi mobile */
+        body { background-color: #f7f9fc; }
+        .app-container {
+            max-width: 420px;
+            margin: 0 auto;
+            min-height: 100vh;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            background-color: white;
+            padding-top: 1px;
+            perspective: 1000px; 
+        }
+        .dark .app-container { background-color: #1f2937; }
+        .dark body { background-color: #111827; }
+        /* Gaya tambahan */
+        .card-saldo-front, .card-saldo-back {
+            backface-visibility: hidden;
+            transition: transform 0.6s;
+        }
+        .flip-card.flipped .card-saldo-front {
+            transform: rotateY(180deg);
+        }
+        .flip-card.flipped .card-saldo-back {
+            transform: rotateY(0deg);
+        }
+        .card-saldo-back {
+            transform: rotateY(-180deg);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900">
+
+    <div class="app-container">
+        <div id="login-screen" class="p-6 h-screen flex flex-col justify-center items-center bg-white dark:bg-gray-800 transition-colors duration-300">
+            <h1 class="text-3xl font-bold mb-6 text-blue-600 dark:text-blue-400">Kas Warga RT 01</h1>
+            <div class="w-full max-w-xs">
+                <input type="email" id="login-email" placeholder="Email (mis: admin1@gmail.com)" class="w-full px-4 py-3 mb-4 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100" required>
+                <input type="password" id="login-password" placeholder="Password (mis: 123456)" class="w-full px-4 py-3 mb-6 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100" required>
+                <button id="login-btn" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition duration-150">LOGIN</button>
+            </div>
+        </div>
+
+        <div id="main-app" class="hidden">
+            <header class="sticky top-0 bg-white dark:bg-gray-800 shadow-md p-4 flex justify-between items-center z-40">
+                <h1 id="app-title" class="text-xl font-bold text-gray-800 dark:text-gray-100">Beranda</h1>
+                <div class="flex items-center space-x-3">
+                    <button id="theme-toggle" class="p-2 rounded-full text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition duration-150">
+                        <svg id="sun-icon" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                        <svg id="moon-icon" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                    </button>
+                    <button id="menu-btn" class="p-2 rounded-full text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition duration-150">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <main id="main-content" class="p-4 pb-20">
+                </main>
+
+            <div class="fixed bottom-20 right-6 z-30 flex flex-col space-y-2">
+                <button id="fab-pemasukan" class="bg-green-500 text-white w-12 h-12 rounded-full shadow-lg hover:bg-green-600 transition duration-150 transform hover:scale-110 flex items-center justify-center hidden" title="Tambah Pemasukan">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </button>
+                <button id="fab-pengeluaran" class="bg-red-500 text-white w-12 h-12 rounded-full shadow-lg hover:bg-red-600 transition duration-150 transform hover:scale-110 flex items-center justify-center hidden" title="Tambah Pengeluaran">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </button>
+            </div>
+            
+            <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white dark:bg-gray-800 shadow-t border-t border-gray-200 dark:border-gray-700 z-50">
+                <div class="flex justify-around items-center h-16">
+                    <button data-tab="beranda" class="nav-tab flex flex-col items-center p-2 text-blue-600 dark:text-blue-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                        <span class="text-xs mt-1">Beranda</span>
+                    </button>
+                    <button data-tab="iuran" class="nav-tab flex flex-col items-center p-2 text-gray-500 dark:text-gray-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20v-8M18 20V8M6 20v-4"/><path d="M19 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/></svg>
+                        <span class="text-xs mt-1">Iuran</span>
+                    </button>
+                    <button data-tab="tabungan" class="nav-tab flex flex-col items-center p-2 text-gray-500 dark:text-gray-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A2 2 0 0 0 14 7.96V4h-4v3.96A2 2 0 0 0 7.26 10H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2z"/><path d="M12 17a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>
+                        <span class="text-xs mt-1">Tabungan</span>
+                    </button>
+                    <button data-tab="warga" class="nav-tab flex flex-col items-center p-2 text-gray-500 dark:text-gray-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="17" y1="12" x2="17" y2="18"/><line x1="14" y1="15" x2="20" y2="15"/></svg>
+                        <span class="text-xs mt-1">Warga</span>
+                    </button>
+                </div>
+            </nav>
+        </div>
+    </div> <div id="pemasukan-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 transform transition-all duration-300">
+            <h2 class="text-xl font-bold mb-4 dark:text-gray-100 text-gray-800">Tambah Pemasukan</h2>
+            <form id="form-pemasukan">
+                <div id="warga-select-container" class="mb-4">
+                    <label for="id-warga-pemasukan" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pilih Warga (Otomatis untuk Iuran/Tabungan)</label>
+                    <select id="id-warga-pemasukan" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="kategori-pemasukan" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kategori Pemasukan</label>
+                    <select id="kategori-pemasukan" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                        <option value="">Pilih Kategori</option>
+                        <option value="Iuran Wajib">Iuran Wajib (Otomatis di Iuran)</option>
+                        <option value="Tabungan Warga">Tabungan Warga (Otomatis di Tabungan)</option>
+                        <option value="Kas Umum">Kas Umum (Otomatis di Beranda)</option>
+                        <option value="Sumbangan">Sumbangan</option>
+                        <option value="Lain-lain">Lain-lain</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label for="jumlah-pemasukan" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Jumlah (Rp)</label>
+                    <input type="number" id="jumlah-pemasukan" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Contoh: 50000" required>
+                </div>
+                <div class="mb-6">
+                    <label for="keterangan-pemasukan" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Keterangan (Opsional)</label>
+                    <input type="text" id="keterangan-pemasukan" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Keterangan transaksi">
+                </div>
+
+                <div class="flex justify-end space-x-3">
+                    <button type="button" id="close-pemasukan-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold transition duration-150 dark:bg-gray-600 dark:text-gray-100 dark:hover:bg-gray-500">Batal</button>
+                    <button type="submit" id="submit-pemasukan-btn" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 font-semibold transition duration-150">Simpan Pemasukan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="pengeluaran-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 transform transition-all duration-300">
+            <h2 class="text-xl font-bold mb-4 dark:text-gray-100 text-gray-800">Tambah Pengeluaran</h2>
+            <form id="form-pengeluaran">
+                <div class="mb-4">
+                    <label for="kategori-pengeluaran" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kategori Pengeluaran</label>
+                    <select id="kategori-pengeluaran" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                        <option value="">Pilih Kategori</option>
+                        <option value="Keamanan">Keamanan</option>
+                        <option value="Kebersihan">Kebersihan</option>
+                        <option value="Acara Warga">Acara Warga</option>
+                        <option value="Perbaikan">Perbaikan Fasilitas</option>
+                        <option value="Lain-lain">Lain-lain</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label for="jumlah-pengeluaran" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Jumlah (Rp)</label>
+                    <input type="number" id="jumlah-pengeluaran" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Contoh: 250000" required>
+                </div>
+                <div class="mb-6">
+                    <label for="keterangan-pengeluaran" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Keterangan</label>
+                    <input type="text" id="keterangan-pengeluaran" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100 focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Untuk keperluan apa pengeluaran ini" required>
+                </div>
+
+                <div class="flex justify-end space-x-3">
+                    <button type="button" id="close-pengeluaran-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold transition duration-150 dark:bg-gray-600 dark:text-gray-100 dark:hover:bg-gray-500">Batal</button>
+                    <button type="submit" id="submit-pengeluaran-btn" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-semibold transition duration-150">Simpan Pengeluaran</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="warga-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 transform transition-all duration-300">
+            <h2 id="warga-modal-title" class="text-xl font-bold mb-4 dark:text-gray-100 text-gray-800">Tambah Warga Baru</h2>
+            <form id="form-warga">
+                <input type="hidden" id="warga-id-input">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="mb-4 col-span-2">
+                        <label for="warga-nama" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nama Lengkap</label>
+                        <input type="text" id="warga-nama" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100" required>
+                    </div>
+                    <div class="mb-4 col-span-2">
+                        <label for="warga-alamat" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Alamat/Blok Rumah</label>
+                        <input type="text" id="warga-alamat" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="warga-pekerjaan" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pekerjaan</label>
+                        <input type="text" id="warga-pekerjaan" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100">
+                    </div>
+                    <div class="mb-4">
+                        <label for="warga-status" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
+                        <select id="warga-status" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100" required>
+                            <option value="Aktif">Aktif</option>
+                            <option value="Pasif">Pasif</option>
+                        </select>
+                    </div>
+                    <div class="mb-4 col-span-2">
+                        <label for="warga-whatsapp" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">WhatsApp</label>
+                        <input type="tel" id="warga-whatsapp" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100">
+                    </div>
+                    <div class="mb-4 col-span-2">
+                        <label for="warga-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email (Login)</label>
+                        <input type="email" id="warga-email" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100" required>
+                    </div>
+                    <div class="mb-4 col-span-2">
+                        <label for="warga-password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password (Login)</label>
+                        <input type="password" id="warga-password" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100" required>
+                    </div>
+                    <div class="mb-4 col-span-2">
+                        <label for="warga-referral" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kode Referral (Opsional)</label>
+                        <input type="text" id="warga-referral" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-100 uppercase" placeholder="Contoh: BUDI123">
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-3 mt-4">
+                    <button type="button" id="close-warga-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold transition duration-150 dark:bg-gray-600 dark:text-gray-100 dark:hover:bg-gray-500">Batal</button>
+                    <button type="submit" id="submit-warga-btn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-semibold transition duration-150">Simpan Warga</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="menu-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden z-50">
+        <div class="fixed top-0 right-0 w-64 h-full bg-white dark:bg-gray-800 shadow-2xl p-6 transform translate-x-full transition-transform duration-300 ease-in-out" id="menu-panel">
+            <h3 class="text-xl font-bold mb-6 text-gray-800 dark:text-gray-100">Menu Aplikasi</h3>
+            <ul class="space-y-4">
+                <li><button class="modal-nav-link text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 w-full text-left" data-title="Manajemen Data">Manajemen Data (Cloud Management)</button></li>
+                <li><button class="modal-nav-link text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 w-full text-left" data-title="Cara Penggunaan">Cara Penggunaan</button></li>
+                <li><button class="modal-nav-link text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 w-full text-left" data-title="Tentang Aplikasi">Tentang Aplikasi</button></li>
+            </ul>
+            <div class="absolute bottom-6 w-full pr-12">
+                <div class="text-xs text-gray-500 dark:text-gray-400 mb-2" id="user-info"></div>
+                <button id="logout-btn" class="w-full bg-red-500 text-white py-2 rounded-lg font-semibold hover:bg-red-600 transition duration-150">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="info-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 transform transition-all duration-300">
+            <div class="flex justify-between items-start mb-4">
+                <h2 id="info-modal-title" class="text-xl font-bold dark:text-gray-100 text-gray-800">Detail</h2>
+                <button id="close-info-modal-btn" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div id="info-modal-content" class="text-gray-700 dark:text-gray-300 space-y-3">
+                </div>
+        </div>
+    </div>
+    
+    <div id="profil-detail-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 transform transition-all duration-300">
+            <div class="flex justify-between items-start mb-4">
+                <h2 id="profil-detail-title" class="text-xl font-bold dark:text-gray-100 text-gray-800">Detail Profil Warga</h2>
+                <button id="close-profil-detail-btn" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div id="profil-detail-content" class="text-gray-700 dark:text-gray-300 space-y-2">
+                </div>
+             <div class="mt-6 flex justify-end space-x-3">
+                <button id="edit-profil-btn" class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 font-semibold transition duration-150">Edit Profil</button>
+                <button id="delete-profil-btn" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-semibold transition duration-150">Hapus Permanen</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification-container" class="fixed bottom-20 right-4 max-w-xs w-full z-50">
+        </div>
+
+    <script src="app.js"></script>
+    
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js') 
+                    .then(registration => {
+                        console.log('SW registered:', registration.scope);
+                    })
+                    .catch(registrationError => {
+                        console.log('SW registration failed:', registrationError);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
