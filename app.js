@@ -1,47 +1,68 @@
-// app.js
+// app.js (Ganti/Modifikasi bagian DOMContentLoaded)
 
-function checkLogin() {
-    // Coba ambil data dari SessionStorage (yang diisi oleh auth.html)
-    const storedUser = sessionStorage.getItem('loggedInUser');
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Dapatkan status Auth dari Firebase
+    auth.onAuthStateChanged(async (userAuth) => {
+        if (userAuth) {
+            // Pengguna sedang login
 
-    if (storedUser) {
-        // Konversi string ke objek
-        const user = JSON.parse(storedUser); 
-        
-        // Cek apakah user yang tersimpan masih ada di data Firestore yang sudah di-load
-        loggedInUser = allWargaData.find(w => w.id === user.id);
-        
-        if (loggedInUser) {
-            // Login sukses
-            document.getElementById('login-screen').classList.add('hidden');
-            document.getElementById('main-app').classList.remove('hidden');
-            document.getElementById('user-info').textContent = `Logged in: ${loggedInUser.nama}`;
-            updateTheme(localStorage.getItem('theme') === 'dark');
-            return true;
+            // 2. Ambil Profil Warga dari Firestore (untuk mendapatkan 'role')
+            const doc = await WARGA_COLLECTION.doc(userAuth.uid).get();
+            
+            if (doc.exists) {
+                // Berhasil login dan profil ditemukan
+
+                // Set status login
+                loggedInUser = { id: userAuth.uid, ...doc.data() };
+                sessionStorage.setItem('loggedInUser', JSON.stringify(loggedInUser));
+
+                // 3. Tampilkan Dasbor
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('main-app').classList.remove('hidden');
+                document.getElementById('user-info').textContent = `Logged in: ${loggedInUser.nama} (${loggedInUser.role.toUpperCase()})`;
+                
+                // 4. Lanjutkan inisialisasi aplikasi (listener Firestore)
+                setupFirestoreListeners(); // Panggil fungsi yang menginisialisasi listener data
+                
+                // 5. Terapkan Batasan Role
+                updateAdminAccessUI(); 
+                
+            } else {
+                // User Auth ada, tapi profil di Firestore hilang
+                auth.signOut();
+                window.location.href = 'auth.html';
+            }
+
+        } else {
+            // Pengguna sedang logout
+            loggedInUser = null;
+            sessionStorage.removeItem('loggedInUser');
+            
+            // Redirect ke halaman login jika bukan halaman auth.html
+            // Karena kita ada di index.html, kita harus redirect.
+            window.location.href = 'auth.html'; 
         }
-    } 
+    });
+
+    // ... (Logika event listener untuk tombol-tombol modal/navigation, dll.) ...
     
-    // Jika tidak ada di SessionStorage atau data tidak valid, tampilkan layar login
-    document.getElementById('login-screen').classList.remove('hidden');
-    document.getElementById('main-app').classList.add('hidden');
-    return false;
+    // PENTING: Panggil fungsi untuk menginisialisasi navigasi/tab/modal di sini
+    // Misalnya: initNavigation(); initModalListeners();
+
+});
+
+
+// 🟥 FUNGSI BARU/MODIFIKASI: Menyiapkan Listener Data 🟥
+function setupFirestoreListeners() {
+    // Listener untuk data Warga
+    WARGA_COLLECTION.onSnapshot(snapshot => {
+        allWargaData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // ... panggil fungsi yang me-render list warga ...
+    });
+
+    // Listener untuk data Transaksi
+    TRANSAKSI_COLLECTION.orderBy('tanggal', 'desc').onSnapshot(snapshot => {
+        allTransaksiData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), timestamp: doc.data().tanggal }));
+        // ... panggil fungsi yang me-render ringkasan/list transaksi ...
+    });
 }
-
-// Ubah fungsi handleLogin dan handleLogout
-
-function handleLogin() {
-    // Fungsi ini kini tidak lagi diperlukan karena login dilakukan di auth.html
-    // Jika Anda ingin mempertahankan fungsi ini sebagai fallback:
-    // Pindahkan pengguna ke halaman login
-    window.location.href = 'auth.html';
-}
-
-function handleLogout() {
-    sessionStorage.removeItem('loggedInUser'); // Hapus dari Session Storage
-    loggedInUser = null;
-    checkLogin();
-    showNotification('Anda telah logout.', 'info');
-}
-
-// Panggil handleLogin saat tombol login ditekan di index.html
-document.getElementById('login-btn').addEventListener('click', handleLogin);
